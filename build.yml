@@ -1,0 +1,70 @@
+name: Build Achilles
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v4
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configurar Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.8'
+
+      - name: Compilar y verificar Achilles
+        run: gradle clean build --no-daemon --stacktrace
+
+      - name: Localizar JAR valido
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/release
+
+          echo '=== JARS GENERADOS ==='
+          find build -type f -name '*.jar' -printf '%s bytes %p\\n' | sort -nr
+
+          JAR="$(find build -type f -name '*.jar' -printf '%s %p\\n' | sort -nr | head -n 1 | cut -d' ' -f2-)"
+
+          if [ -z "$JAR" ]; then
+            echo 'ERROR: no se genero ningun JAR.'
+            exit 1
+          fi
+
+          SIZE="$(stat -c%s "$JAR")"
+          if [ "$SIZE" -le 10000 ]; then
+            echo "ERROR: el JAR elegido mide solo $SIZE bytes: $JAR"
+            exit 1
+          fi
+
+          if ! unzip -l "$JAR" | grep -q 'com/achilles/Achilles.class'; then
+            echo 'ERROR: el JAR no contiene com/achilles/Achilles.class'
+            exit 1
+          fi
+
+          cp "$JAR" build/release/achilles-1.0.2.jar
+          echo "JAR FINAL: build/release/achilles-1.0.2.jar"
+          ls -lh build/release/achilles-1.0.2.jar
+
+      - name: Subir JAR FINAL
+        uses: actions/upload-artifact@v4
+        with:
+          name: achilles-1.0.2-final
+          path: build/release/achilles-1.0.2.jar
+          if-no-files-found: error

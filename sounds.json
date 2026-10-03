@@ -1,0 +1,4 @@
+{
+  "aquilles_cute":{"sounds":["achilles:aquilles_cute"],"subtitle":"entity.achilles.aquilles.ambient"},
+  "aquilles_hurt":{"sounds":["achilles:aquilles_hurt"],"subtitle":"entity.achilles.aquilles.hurt"}
+}

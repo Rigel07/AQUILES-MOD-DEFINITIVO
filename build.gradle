@@ -1,0 +1,105 @@
+plugins {
+    id 'java'
+    id 'eclipse'
+    id 'idea'
+    id 'net.minecraftforge.gradle' version '[6.0,6.2)'
+}
+
+group = 'com.achilles'
+version = '1.0.2'
+
+base {
+    archivesName = 'achilles'
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+sourceSets {
+    main {
+        java.srcDirs = ['src/main/java']
+        resources.srcDirs = ['src/main/resources']
+    }
+}
+
+minecraft {
+    mappings channel: 'official', version: '1.20.1'
+    copyIdeResources = true
+
+    runs {
+        client {
+            workingDirectory project.file('run')
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+            mods {
+                achilles { source sourceSets.main }
+            }
+        }
+        server {
+            workingDirectory project.file('run-server')
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+            args '--nogui'
+            mods {
+                achilles { source sourceSets.main }
+            }
+        }
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    minecraft 'net.minecraftforge:forge:1.20.1-47.4.10'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.named('processResources').configure {
+    inputs.property('version', project.version)
+    filesMatching('META-INF/mods.toml') {
+        expand(version: project.version)
+    }
+}
+
+tasks.named('jar', Jar).configure {
+    manifest.attributes([
+        'Specification-Title'     : 'Achilles',
+        'Specification-Vendor'    : 'achilles',
+        'Specification-Version'   : '1',
+        'Implementation-Title'    : project.name,
+        'Implementation-Version'  : project.version,
+        'Implementation-Vendor'   : 'achilles'
+    ])
+    finalizedBy 'reobfJar'
+}
+
+// The build must never silently produce an empty JAR.
+tasks.register('verifyAchillesBuild') {
+    dependsOn 'reobfJar'
+    doLast {
+        def jars = fileTree(layout.buildDirectory).matching { include '**/*.jar' }.files
+        if (jars.isEmpty()) {
+            throw new GradleException('No JAR was produced.')
+        }
+
+        def valid = jars.find { jar ->
+            jar.length() > 10_000 &&
+            project.zipTree(jar).matching { include 'com/achilles/**/*.class' }.files.any()
+        }
+
+        if (valid == null) {
+            def report = jars.collect { "${it}: ${it.length()} bytes" }.join('\n')
+            throw new GradleException("No valid Achilles JAR was produced.\n$report")
+        }
+
+        println("VALID ACHILLES JAR: ${valid} (${valid.length()} bytes)")
+    }
+}
+
+tasks.named('build').configure {
+    finalizedBy 'verifyAchillesBuild'
+}

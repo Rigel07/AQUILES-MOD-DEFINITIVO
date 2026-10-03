@@ -1,0 +1,27 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="MIT"
+
+[[mods]]
+modId="achilles"
+version="${version}"
+displayName="Achilles"
+authors="Achilles Mod"
+description='''
+Achilles genera estatuas de un antiguo guerrero por el mundo. Al reclamarlas, crean zonas sagradas que protegen a sus propietarios y aliados, expulsan criaturas hostiles y regeneran vida. Cada estatua descubierta concede un punto que puede invertirse en radio o curación, hasta nivel 100 en cada atributo de cada estatua.
+Incluye a Aquiles, un mini guerrero chibi inspirado en la mitología: torpe, adorable y con sonidos propios.
+'''
+
+[[dependencies.achilles]]
+modId="forge"
+mandatory=true
+versionRange="[47.4.10,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.achilles]]
+modId="minecraft"
+mandatory=true
+versionRange="[1.20.1,1.21)"
+ordering="NONE"
+side="BOTH"
