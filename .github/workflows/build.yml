@@ -1,0 +1,112 @@
+name: Build Achilles
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configurar Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.8'
+
+      - name: Limpiar proyecto
+        run: gradle clean --no-daemon
+
+      - name: Compilar Achilles
+        run: gradle build --no-daemon --stacktrace
+
+      - name: Comprobar JAR
+        shell: bash
+        run: |
+          set -e
+
+          echo "======================================"
+          echo " ARCHIVOS GENERADOS"
+          echo "======================================"
+
+          ls -lah build/libs/
+
+          echo ""
+          echo "======================================"
+          echo " BUSCANDO JAR"
+          echo "======================================"
+
+          JAR=$(find build/libs -maxdepth 1 -type f -name "*.jar" | head -n 1)
+
+          if [ -z "$JAR" ]; then
+            echo "ERROR: No se ha generado ningun JAR."
+            exit 1
+          fi
+
+          echo "JAR encontrado:"
+          echo "$JAR"
+
+          echo ""
+          echo "Tamano:"
+          ls -lh "$JAR"
+
+          echo ""
+          echo "======================================"
+          echo " CONTENIDO DEL JAR"
+          echo "======================================"
+
+          unzip -l "$JAR"
+
+          echo ""
+          echo "======================================"
+          echo " COMPROBANDO CLASE PRINCIPAL"
+          echo "======================================"
+
+          if unzip -l "$JAR" | grep -q "com/achilles/Achilles.class"; then
+            echo "OK: Achilles.class esta dentro del JAR."
+          else
+            echo "ERROR: Achilles.class NO esta dentro del JAR."
+            echo ""
+            echo "El JAR generado no es valido."
+            exit 1
+          fi
+
+          echo ""
+          echo "======================================"
+          echo " COMPROBANDO TAMANO"
+          echo "======================================"
+
+          SIZE=$(stat -c%s "$JAR")
+
+          echo "Tamano del JAR: $SIZE bytes"
+
+          if [ "$SIZE" -lt 10000 ]; then
+            echo "ERROR: El JAR pesa menos de 10 KB."
+            echo "El JAR parece estar vacio o incompleto."
+            exit 1
+          fi
+
+          echo ""
+          echo "======================================"
+          echo " BUILD CORRECTO"
+          echo "======================================"
+
+      - name: Subir JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: achilles-1.0.2-final
+          path: build/libs/*.jar
+          if-no-files-found: error
